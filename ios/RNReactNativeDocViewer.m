@@ -44,9 +44,9 @@ RCT_EXPORT_METHOD(openDoc:(NSArray *)array callback:(RCTResponseSenderBlock)call
         NSDictionary* dict = [array objectAtIndex:0];
         NSString* urlStr = dict[@"url"];
         NSString* filename = dict[@"fileName"];
+        NSString* filetitle = dict[@"fileTitle"];
         NSURL* url = [NSURL URLWithString:[urlStr stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
         NSData* dat = [NSData dataWithContentsOfURL:url];
-        RCTLogInfo(@"Url %@", url);
         //From the www
         if ([urlStr containsString:@"http"]) {
             if (dat == nil) {
@@ -57,7 +57,6 @@ RCT_EXPORT_METHOD(openDoc:(NSArray *)array callback:(RCTResponseSenderBlock)call
             }
             NSString* fileName = [url lastPathComponent];
             NSString* fileExt = [fileName pathExtension];
-            RCTLogInfo(@"Pretending to create an event at %@", fileExt);
             if([fileExt length] == 0){
                 fileName = [NSString stringWithFormat:@"%@%@", fileName, @".pdf"];
             }
@@ -66,24 +65,26 @@ RCT_EXPORT_METHOD(openDoc:(NSArray *)array callback:(RCTResponseSenderBlock)call
             NSURL* tmpFileUrl = [[NSURL alloc] initFileURLWithPath:path];
             [dat writeToURL:tmpFileUrl atomically:YES];
             weakSelf.fileUrl = tmpFileUrl;
+            weakSelf.title = filetitle;
         } else {
             //Local File
             NSString* fileName = [url lastPathComponent];
             NSString* fileExt = [fileName pathExtension];
             //NSString* fileName = [NSString stringWithFormat:@"%@%@%@", fileName, @".", filetype];
-            RCTLogInfo(@"Pretending to create an event at %@", fileExt);
+            
             if([fileExt length] == 0){
                 fileName = [NSString stringWithFormat:@"%@%@", fileName, @".pdf"];
             }
             NSURL* tmpFileUrl = [[NSURL alloc] initFileURLWithPath:urlStr];
             weakSelf.fileUrl = tmpFileUrl;
+            weakSelf.title = filetitle;
         }
     
-        
         dispatch_async(dispatch_get_main_queue(), ^{
             QLPreviewController* cntr = [[QLPreviewController alloc] init];
             cntr.delegate = weakSelf;
             cntr.dataSource = weakSelf;
+            
             if (callback) {
                 callback(@[[NSNull null], array]);
             }
@@ -109,6 +110,7 @@ RCT_EXPORT_METHOD(openDocBinaryinUrl:(NSArray *)array callback:(RCTResponseSende
         NSString* url = dict[@"url"];
         NSString* filename = dict[@"fileName"];
         NSString* filetype = dict[@"fileType"];
+        NSString* filetitle = dict[@"fileTitle"];
         //NSArray* splitUrl = [url componentsSeparatedByString: @"/"];
         //NSString* binaryString = [splitUrl lastObject];
         //Parse the Binary from URL
@@ -132,15 +134,18 @@ RCT_EXPORT_METHOD(openDocBinaryinUrl:(NSArray *)array callback:(RCTResponseSende
 
         [dat writeToURL:tmpFileUrl atomically:YES];
         weakSelf.fileUrl = tmpFileUrl;
+        weakSelf.title = filetitle;
         
         dispatch_async(dispatch_get_main_queue(), ^{
             QLPreviewController* cntr = [[QLPreviewController alloc] init];
             cntr.delegate = weakSelf;
             cntr.dataSource = weakSelf;
+            
             if (callback) {
                 callback(@[[NSNull null], @"Data"]);
             }
             UIViewController* root = [[[UIApplication sharedApplication] keyWindow] rootViewController];
+            
             [root presentViewController:cntr animated:YES completion:nil];
         });
         
@@ -162,6 +167,7 @@ RCT_EXPORT_METHOD(openDocb64:(NSArray *)array callback:(RCTResponseSenderBlock)c
         NSString* base64String = dict[@"base64"];
         NSString* filename = dict[@"fileName"];
         NSString* filetype = dict[@"fileType"];
+        NSString* filetitle = dict[@"fileTitle"];
         NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"data:application/octet-stream;base64,%@",base64String]];
         NSData* dat = [NSData dataWithContentsOfURL:url];
         if (dat == nil) {
@@ -180,6 +186,7 @@ RCT_EXPORT_METHOD(openDocb64:(NSArray *)array callback:(RCTResponseSenderBlock)c
 
         [dat writeToURL:tmpFileUrl atomically:YES];
         weakSelf.fileUrl = tmpFileUrl;
+        weakSelf.title = filetitle;
         
         dispatch_async(dispatch_get_main_queue(), ^{
             QLPreviewController* cntr = [[QLPreviewController alloc] init];
@@ -230,6 +237,10 @@ RCT_EXPORT_METHOD(playMovie:(NSString *)file callback:(RCTResponseSenderBlock)ca
   });
 }
 
+/*- (void)previewControllerDidDismiss:(QLPreviewController *)controller {
+    RCTLogInfo(@"TEST Module namaste");
+}*/
+
 - (NSInteger) numberOfPreviewItemsInPreviewController: (QLPreviewController *) controller
 {
     return 1;
@@ -245,6 +256,11 @@ RCT_EXPORT_METHOD(playMovie:(NSString *)file callback:(RCTResponseSenderBlock)ca
 - (NSURL*)previewItemURL
 {
     return self.fileUrl;
+}
+
+- (NSString*)previewItemTitle
+{
+    return self.title;
 }
 
 
